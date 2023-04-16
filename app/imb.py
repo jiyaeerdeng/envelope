@@ -29,34 +29,28 @@ import sys
 W = sys.stderr.write
 
 # Note: this could probably be written much more simply...
-def crc11 (input):
+def crc11(input):
     gen_poly = 0x0f35
     FCS = 0x07ff
     data = input[0] << 5
     pos = 1
     # do the most significant byte skipping the 2 most significant bits
-    for bit in range (2, 8):
-        if (FCS ^ data) & 0x400:
-            FCS = (FCS << 1) ^ gen_poly
-        else:
-            FCS = FCS << 1
+    for _ in range (2, 8):
+        FCS = (FCS << 1) ^ gen_poly if (FCS ^ data) & 0x400 else FCS << 1
         FCS &= 0x7ff
         data <<= 1
     # do the rest of the bytes
     for byte_index in range (1, 13):
         data = input[byte_index] << 3
-        for bit in range (8):
-            if (FCS ^ data) & 0x400:
-                FCS = (FCS << 1) ^ gen_poly
-            else:
-                FCS = FCS << 1
+        for _ in range (8):
+            FCS = (FCS << 1) ^ gen_poly if (FCS ^ data) & 0x400 else FCS << 1
             FCS &= 0x7ff
             data <<= 1
     return FCS
 
-def reverse_int16 (input):
+def reverse_int16(input):
     reverse = 0
-    for i in range (16):
+    for _ in range (16):
         reverse <<= 1
         reverse |= input & 1
         input >>= 1
@@ -105,23 +99,21 @@ def make_inverted_tabs():
             raise ValueError
         inverted[v] = (1, k)
 
-def binary_to_codewords (n):
-    r = []
+def binary_to_codewords(n):
     n, x = divmod (n, 636)
-    r.append (x)
-    for i in range (9):
+    r = [x]
+    for _ in range (9):
         n, x = divmod (n, 1365)
         r.append (x)
     r.reverse()
     return r
 
-def codewords_to_binary (codes):
+def codewords_to_binary(codes):
     n = 0
     cr = codes[:]
     for code in cr[:-1]:
         n = (n * 1365) + code
-    n = (n * 636) + cr[-1]
-    return n
+    return (n * 636) + cr[-1]
 
 def convert_routing_code (zip):
     if len(zip) == 0:
@@ -153,9 +145,9 @@ def convert_tracking_code (enc, track):
         enc = (enc * 10) + int (track[i])
     return enc
 
-def unconvert_tracking_code (n):
+def unconvert_tracking_code(n):
     r = []
-    for i in range (2, 20):
+    for _ in range (2, 20):
         n, x = divmod (n, 10)
         r.append (x)
     n, x = divmod (n, 5)
@@ -165,9 +157,9 @@ def unconvert_tracking_code (n):
     r.reverse()
     return n, ''.join ([str(int(x)) for x in r])
 
-def to_bytes (val, nbytes):
+def to_bytes(val, nbytes):
     r = []
-    for i in range (nbytes):
+    for _ in range (nbytes):
         r.append (val & 0xff)
         val >>= 8
     r.reverse()
@@ -221,7 +213,7 @@ def make_bars (code):
         r.append ('TADF'[descend<<1|ascend])
     return ''.join (r)
 
-def unbar (code):
+def unbar(code):
     assert (len (code) == 65)
     r = [0] * 10
     for i in range (65):
@@ -235,17 +227,15 @@ def unbar (code):
         elif ch == 'F':
             r[ia] |= 1<<ba
             r[id] |= 1<<bd
-        else:
-            pass
     return r
 
-def decode (codes):
+def decode(codes):
     fcs = 0
     codes = unbar (codes)
     r = []
     for i in range (10):
         code = codes[i]
-        if not code in inverted:
+        if code not in inverted:
             code = code ^ 0x1fff
             fcs |= 1<<i
         bump, val = inverted[code]
@@ -264,15 +254,15 @@ def decode (codes):
     routing = '%d' % (routing,)
     print('routing', routing)
     if len(routing) == 11:
-        print('zip %s-%s delivery point %s' % (routing[:5], routing[5:9], routing[9:]))
+        print(f'zip {routing[:5]}-{routing[5:9]} delivery point {routing[9:]}')
     elif len(routing) == 9:
-        print('zip %s-%s' % (routing[:5], routing[5:9]))
+        print(f'zip {routing[:5]}-{routing[5:9]}')
     elif len(routing) == 5:
-        print('zip %s' % (routing[:5],))
+        print(f'zip {routing[:5]}')
     else:
         print('zip: empty')
     print('tracking', tracking)
-    barcode_id = tracking[0:2]
+    barcode_id = tracking[:2]
     service_type = tracking[2:5]
     if tracking[5] == '9':
         mailer_id = tracking[5:5+9]
@@ -285,7 +275,7 @@ def decode (codes):
     print('mailer_id', mailer_id)
     print('serial', serial)
 
-def render_ascii (code):
+def render_ascii(code):
     "render the letter sequence into something resembling the actual bar code"
     center = ['|'] * 65
     blank  = [' '] * 65
@@ -298,8 +288,6 @@ def render_ascii (code):
         elif code[i] == 'F':
             r[0][i] = '|'
             r[2][i] = '|'
-        else:
-            pass
     import sys
     W = sys.stderr.write
     for x in r:

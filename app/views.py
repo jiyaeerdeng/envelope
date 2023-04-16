@@ -32,10 +32,10 @@ async def server_shutdown():
 
 
 async def generate_serial():
-    today = datetime.datetime.today()
+    today = datetime.datetime.now()
     num_days = (today - datetime.datetime(1970, 1, 1)).days
     base = num_days % ROLLING_WINDOW
-    day_key = "serial_" + str(base)
+    day_key = f"serial_{str(base)}"
     perday_counter = await redis_client.incr(day_key)
     if perday_counter >= 9999:
         raise ValueError
@@ -72,11 +72,9 @@ async def generate():
         recipient_zip = int((await request.form)['recipient_zip'])
         recipient_zip = str((await request.form)['recipient_zip'])
     except ValueError:
-        response = "Recipient zip is not number!"
-        return response
+        return "Recipient zip is not number!"
     if len(str((await request.form)['recipient_zip'])) < 5:
-        response = "Invalid recipient zip"
-        return response
+        return "Invalid recipient zip"
     zip_full = zip5 = str((await request.form)['recipient_zip'])[:5]
     if len(str((await request.form)['recipient_zip'])) > 5:
         zip4 = str((await request.form)['recipient_zip'])[5:9]

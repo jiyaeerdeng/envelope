@@ -99,13 +99,11 @@ async def get_authorization_header():
         await token_maintain()
     access_token = (await redis_client.get("usps_access_token")).decode('utf-8')
     token_type = (await redis_client.get("usps_token_type")).decode('utf-8')
-    headers_local = dict()
-    headers_local["Authorization"] = token_type + " " + access_token
-    return headers_local
+    return {"Authorization": f"{token_type} {access_token}"}
 
 
 async def get_piece_tracking(imb: str):
-    url = urljoin(USPS_SERVICE_API_BASE, "api/mt/get/piece/imb/" + imb)
+    url = urljoin(USPS_SERVICE_API_BASE, f"api/mt/get/piece/imb/{imb}")
     try:
         response = await httpx_client.get(url, headers=await get_authorization_header())
     except httpx.HTTPError as err:
@@ -124,11 +122,7 @@ async def get_USPS_standardized_address(address):
         <State>{address['state']}</State>
         <Zip5>{address['zip5']}</Zip5>
     """)
-    if 'zip4' in address:
-        req += f"<Zip4>{address['zip4']}</Zip4>"
-    else:
-        req += "<Zip4/>"
-
+    req += f"<Zip4>{address['zip4']}</Zip4>" if 'zip4' in address else "<Zip4/>"
     address_xml = f"""
     <Address ID="0">{req}</Address>
     """
@@ -155,18 +149,24 @@ async def get_USPS_standardized_address(address):
         response_dict['AddressValidateResponse']['Address']['Address1'] = ''
     if 'FirmName' not in response_dict['AddressValidateResponse']['Address']:
         response_dict['AddressValidateResponse']['Address']['FirmName'] = ''
-    standardized_address = {
-        'firmname': response_dict['AddressValidateResponse']['Address']['FirmName'],
-        'address1': response_dict['AddressValidateResponse']['Address']['Address1'],
-        'address2': response_dict['AddressValidateResponse']['Address']['Address2'],
+    return {
+        'firmname': response_dict['AddressValidateResponse']['Address'][
+            'FirmName'
+        ],
+        'address1': response_dict['AddressValidateResponse']['Address'][
+            'Address1'
+        ],
+        'address2': response_dict['AddressValidateResponse']['Address'][
+            'Address2'
+        ],
         'city': response_dict['AddressValidateResponse']['Address']['City'],
         'state': response_dict['AddressValidateResponse']['Address']['State'],
         'zip5': response_dict['AddressValidateResponse']['Address']['Zip5'],
         'zip4': response_dict['AddressValidateResponse']['Address']['Zip4'],
-        'dp': response_dict['AddressValidateResponse']['Address'].get('DeliveryPoint', ''),
+        'dp': response_dict['AddressValidateResponse']['Address'].get(
+            'DeliveryPoint', ''
+        ),
     }
-
-    return standardized_address
 
 
 if __name__ == "__main__":
